@@ -3,6 +3,7 @@
 library(tidyverse)
 library(patchwork)
 source("ricker.R")
+source("bsl.R")
 
 model <- ricker_model(
     log_r = 3.8,
@@ -62,3 +63,46 @@ log_lik <- sapply(log_r,
 
 fig_1c <- ggplot(mapping = aes(log_r, log_lik)) +
     geom_line()
+
+
+
+
+
+prior_density <- function(theta)
+    dunif(theta$log_r, -20, 20) *
+    dunif(theta$phi, 0, 50) *
+    dunif(theta$sigma, 0, 3)
+
+rand_proposal <- function(old_theta) {
+    ricker_model(
+        log_r =     runif(1, old_theta$log_r - 1, old_theta$log_r + 1),
+        phi   = abs(runif(1, old_theta$phi   - 1, old_theta$phi   + 1)),
+        sigma = abs(runif(1, old_theta$sigma - 1, old_theta$sigma + 1)),
+        N_0   = old_theta$N_0
+    )
+}
+
+statistic <- function(y) {
+    mean(y)
+}
+
+
+
+
+result <- MCMC_BSL(
+    y                = simulation$y,
+    prior_density    = prior_density,
+    proposal_density = function(a, b) 1, # it's symmetric
+    rand_proposal    = rand_proposal,
+    rand_model       = function(n, theta) rand_ricker(n, theta)$y,
+    statistic        = statistic,
+    initial_theta    = ricker_model(
+        log_r = 2,
+        phi   = 8,
+        sigma = 1,
+        N_0   = model$N_0
+    ),
+    iterations       = 1000
+)
+
+view_results(result, model)
