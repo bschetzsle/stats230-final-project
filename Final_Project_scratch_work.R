@@ -27,6 +27,10 @@ proposal = function(old_theta, new_theta=NA){
   return(1/(2*bandwidth)*ifelse(new_theta < bandwidth - old_theta, 2,1)*ifelse(abs(old_theta-new_theta)<=bandwidth,1,0))
 }
 
+
+
+
+
 MCMC_BSL = function(Y, prior, proposal, statistic, n=100, N=100, iterations, theta){
   #this function will generate samples from the posterior P(theta|Y) without computing P(Y|theta)
   sY = statistic(Y)
