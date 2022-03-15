@@ -31,7 +31,7 @@ proposal = function(old_theta, new_theta=NA){
 
 
 
-MCMC_BSL = function(Y, prior, proposal, statistic, n=100, N=100, iterations, theta){
+MCMC_BSL = function(Y, rmodel, prior, proposal, statistic, n=100, N=100, iterations, theta){
   #this function will generate samples from the posterior P(theta|Y) without computing P(Y|theta)
   sY = statistic(Y)
 
@@ -93,3 +93,52 @@ plot(density(result_mean$theta[100:1000]), xlim=c(20,40), main="P(Theta|Y) for d
 lines(density(result_max$theta[100:1000]), col="red")
 lines(density(result_min$theta[100:1000]), col="blue")
 legend(35,0.22,legend=c("Max","Mean","Min"), col=c("Red","Black","Blue"), lty=1)
+
+
+
+
+
+#Ricker Model
+rmodel_ricker = function(n, theta){
+  #sample from the model
+  r = theta[1]
+  sigma = theta[2]
+  phi = theta[3]
+
+  e = rnorm(n,0,sigma)
+  N = matrix(0,nrow=n)
+  N[1] = 5
+  Y = matrix(0,nrow=n)
+  Y[1] = rpois(1,phi*N[1])
+  for(i in 2:n){
+    N[i] = r*N[i-1]*exp(-N[i-1]+e[i-1])
+    Y[i] = rpois(1,phi*N[i])
+  }
+  return(Y)
+}
+
+prior_ricker = function(theta){
+  #returns the density of the model parameter from the prior distribution
+  return(1)
+}
+
+statistic_ricker = function(Y){
+  #given data, this function computes a statistic
+  stat = c(mean(Y),sum(Y==0),lm(sort(Y)~ poly(1:length(Y),2))$coefficients, arima(Y,order=c(1,0,0))$coef)
+  return(as.matrix(stat,ncol=1))
+}
+
+proposal_ricker = function(old_theta, new_theta=NA){
+  #given the current model parameter, this function returns an update proposal
+  #given the current and update, this function returns the density of the update
+  bandwidth = c(3,1,2)
+  if(is.na(new_theta)){
+    a = runif(1, -bandwidth[1], bandwidth[1])
+    b = runif(1, -bandwidth[2], bandwidth[2])
+    c = runif(1, -bandwidth[3], bandwidth[3])
+    return(abs(c(old_theta+c(a,b,c))))
+  }
+  return(1)
+}
+
+result = MCMC_BSL(Y, rmodel_ricker, prior_ricker, proposal_ricker, statistic_ricker, n=100, N=100, iterations=100, theta=c(20,1,5))
