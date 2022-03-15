@@ -101,9 +101,9 @@ legend(35,0.22,legend=c("Max","Mean","Min"), col=c("Red","Black","Blue"), lty=1)
 #Ricker Model
 rmodel_ricker = function(n, theta){
   #sample from the model
-  r = theta[1]
-  sigma = theta[2]
-  phi = theta[3]
+  r = exp(theta$log_r)
+  sigma = theta$sigma
+  phi = theta$phi
 
   e = rnorm(n,0,sigma)
   N = matrix(0,nrow=n)

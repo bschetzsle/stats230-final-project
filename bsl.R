@@ -11,31 +11,35 @@ MCMC_BSL <- function(y,
                      statistic,
                      initial_theta,
                      iterations = 1000,
-                     n = 100,
-                     N = 100) {
+                     simulations = 100) {
+    #simulations is n in the papers
 
     s_y <- statistic(y)
 
     #generate a structure to keep track of the samples
-    result <- list(theta = list(), joint_prob = seq_len(iterations))
+    result <- list(theta = list(), log_joint_prob = seq_len(iterations))
 
     #simulate x from starting theta0 and calculate statistic
     theta <- initial_theta
-    s <- Reduce(rbind, replicate(N, statistic(rand_model(n, theta)), simplify = F))
+    s <- Reduce(rbind, replicate(simulations, statistic(rand_model(length(y), theta)), simplify = F))
     mu <- apply(s, 2, mean)
-    Sigma <- t(s - mu) %*% (s - mu) / (N - 1)
+    Sigma <- t(s - mu) %*% (s - mu) / (simulations - 1)
 
     for (i in 1:iterations) {
         new_theta <- rand_proposal(theta)
 
-        s <- Reduce(rbind, replicate(N, statistic(rand_model(n, new_theta)), simplify = F))
+        s <- Reduce(rbind, replicate(simulations, statistic(rand_model(length(y), new_theta)), simplify = F))
         new_mu <- apply(s, 2, mean)
-        new_Sigma <- t(s - new_mu) %*% (s - new_mu) / (N - 1)
+        new_Sigma <- t(s - new_mu) %*% (s - new_mu) / (simulations - 1)
 
-        r <- min(1,
-                (dmvnorm(s_y, new_mu, new_Sigma) * prior_density(new_theta) * proposal_density(new_theta, theta)) /
-                (dmvnorm(s_y, mu, Sigma) * prior_density(theta) * proposal_density(theta, new_theta))
-        )
+        log_MH_ratio <- (dmvnorm(s_y, new_mu, new_Sigma, log = T) +
+                             prior_density(new_theta, log = T) +
+                             log(proposal_density(new_theta, theta))) -
+            (dmvnorm(s_y, mu, Sigma, log = T) +
+                 prior_density(theta, log = T) +
+                 log(proposal_density(theta, new_theta)))
+        r <- min(1, exp(log_MH_ratio))
+
 
         if (is.na(r) || runif(1) < r) {
             theta <- result$theta[[i]] <- new_theta
@@ -47,7 +51,7 @@ MCMC_BSL <- function(y,
             result$theta[[i]] <- theta
         }
 
-        result$joint_prob[i] <- dmvnorm(s_y, mu, Sigma) * prior_density(theta)
+        result$log_joint_prob[i] <- dmvnorm(s_y, mu, Sigma, log = T) + prior_density(theta, log = T)
     }
 
     result
@@ -73,6 +77,6 @@ view_results <- function(result, model) {
 
     Map(plot_param, names(model)) %>%
     Reduce(`/`, .) / (
-        (ggplot(mapping = aes(seq_along(result$joint_prob), log(result$joint_prob))) + geom_line()) + ggplot()
+        (ggplot(mapping = aes(seq_along(result$log_joint_prob), result$log_joint_prob)) + geom_line()) + ggplot()
     )
 }

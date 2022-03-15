@@ -68,22 +68,42 @@ fig_1c <- ggplot(mapping = aes(log_r, log_lik)) +
 
 
 
-prior_density <- function(theta)
-    dunif(theta$log_r, -20, 20) *
-    dunif(theta$phi, 0, 50) *
-    dunif(theta$sigma, 0, 3)
+prior_density <- function(theta, log = F) {
+    if (log) {
+        dunif(theta$log_r, -20, 20, log = T) +
+            dunif(theta$phi, 0, 50, log = T) +
+            dunif(theta$sigma, 0, 3, log = T)
+    }
+    else {
+        dunif(theta$log_r, -20, 20) *
+        dunif(theta$phi, 0, 50) *
+        dunif(theta$sigma, 0, 3)
+    }
+}
 
 rand_proposal <- function(old_theta) {
+    bandwidth = c(1, 0.5, 0.05)
+    a <- runif(1, -bandwidth[1], bandwidth[1])
+    b <- runif(1, -bandwidth[2], bandwidth[2])
+    c <- runif(1, -bandwidth[3], bandwidth[3])
     ricker_model(
-        log_r =     runif(1, old_theta$log_r - 1, old_theta$log_r + 1),
-        phi   = abs(runif(1, old_theta$phi   - 1, old_theta$phi   + 1)),
-        sigma = abs(runif(1, old_theta$sigma - 1, old_theta$sigma + 1)),
+        log_r =     old_theta$log_r + a,
+        phi   = abs(old_theta$phi + b),
+        sigma = abs(old_theta$sigma + c),
         N_0   = old_theta$N_0
     )
 }
 
 statistic <- function(y) {
-    mean(y)
+    stat = c(
+        mean(y),
+        sum(y==0),
+        lm(diff(y) ~ poly(y[-1] + rnorm(length(y)-1, 0, 0.001), degree=3))$coef,
+        lm(I(y[-1]^0.3) ~ I(y[-50]^0.3) + I(y[-50]^0.6))$coef,
+        acf(y, lag.max=5, plot=F, type="covariance")$acf[,1, 1]
+    )
+#    stat = c(mean(y), sum(y==0))
+    return(stat)
 }
 
 
@@ -91,18 +111,29 @@ statistic <- function(y) {
 
 result <- MCMC_BSL(
     y                = simulation$y,
-    prior_density    = prior_density,
+    prior_density    = function(theta, log) as.numeric(!log), #prior_density,
     proposal_density = function(a, b) 1, # it's symmetric
     rand_proposal    = rand_proposal,
     rand_model       = function(n, theta) rand_ricker(n, theta)$y,
     statistic        = statistic,
     initial_theta    = ricker_model(
-        log_r = 2,
-        phi   = 8,
+        log_r = 3,
+        phi   = 19,
         sigma = 1,
         N_0   = model$N_0
     ),
-    iterations       = 1000
+    iterations = 100,
+    simulations = 100
 )
 
 view_results(result, model)
+
+iterations = length(result$theta)
+new_simulation = rand_ricker(n = 50, model=ricker_model(
+    log_r = result$theta[[iterations]]$log_r,
+    sigma = result$theta[[iterations]]$sigma,
+    phi = result$theta[[iterations]]$phi,
+    N_0 = result$theta[[iterations]]$N_0
+))
+plot(simulation$y, type="l")
+lines(new_simulation$y, col="red")
