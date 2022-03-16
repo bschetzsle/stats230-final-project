@@ -1,31 +1,33 @@
 source("bsl.R")
 
-statistic <- function(X) {
-  return(mean(X))
-  #return(max(X))
-  #return(c(min(X), max(X)))
+statistic <- function(y) {
+  mean(y)
+  # max(y)
+  # c(min(y), max(y))
 }
 
+# symmetric proposal
 rand_proposal <- function(old_theta) {
   bandwidth <- 3
-
   old_lambda <- old_theta$lambda
-  lambda <- abs(runif(1, old_lambda - bandwidth, old_lambda + bandwidth))
 
-  list(lambda = lambda)
+  list(lambda = abs(runif(1, old_lambda - bandwidth, old_lambda + bandwidth)))
 }
 
-model <- list(lambda = 30)
+prior_log_density <- function(theta)
+  dgamma(theta$lambda, shape = 15, rate = 0.5, log = T)
 
-result <- MCMC_BSL(
-    y                = rpois(100, model$lambda),
-    prior_density    = function(theta) dgamma(theta$lambda, shape = 15, rate = 0.5),
-    proposal_density = function(old_theta, new_theta) 1, # it's symmetric
-    rand_proposal    = rand_proposal,
-    rand_model       = function(n, theta) rpois(n, theta$lambda),
-    statistic        = statistic,
-    initial_theta    = list(lambda = 6.29),
-    iterations       = 1000
+
+
+true_lambda <- 30
+
+result <- mcmc_bsl(
+    y                 = rpois(100, true_lambda),
+    prior_log_density = prior_log_density,
+    rand_likelihood   = function(n, theta) rpois(n, theta$lambda),
+    rand_proposal     = rand_proposal,
+    statistic         = statistic,
+    initial_theta     = list(lambda = 6.29)
 )
 
-view_results(result, model)
+plot_param(result, lambda, true_lambda) / plot_log_prob(result)
