@@ -50,6 +50,9 @@ mcmc_bsl <- function(y,
     lik_params <- estimate_synth_lik_params(theta)
 
     for (i in 1:iterations) {
+        if (iteration %% 100 == 0)
+          message("Iteration: ", iteration)
+
         new_theta <- rand_proposal(theta)
         new_lik_params <- estimate_synth_lik_params(new_theta)
 
