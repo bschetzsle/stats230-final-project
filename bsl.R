@@ -12,6 +12,8 @@ mcmc_bsl <- function(y,
                      initial_theta,
                      iterations = 1000,
                      simulations = 100) {
+    # Save timestamp for checkpoint filenames
+    start_time <- as.numeric(Sys.time())
     # First, some helper functions
 
     # Monte Carlo approximation of the synthetic likelihood mu and sigma
@@ -26,7 +28,8 @@ mcmc_bsl <- function(y,
 
       mu <- apply(s, 2, mean)
 
-      mu_matrix <- matrix(mu, nrow=simulations, ncol=length(mu), byrow=TRUE)
+
+      mu_matrix <- matrix(mu, nrow = simulations, ncol = length(mu), byrow = T)
       sigma <- t(s - mu_matrix) %*% (s - mu_matrix) / (simulations - 1)
 
       list(mu = mu, sigma = sigma)
@@ -50,8 +53,11 @@ mcmc_bsl <- function(y,
     lik_params <- estimate_synth_lik_params(theta)
 
     for (i in 1:iterations) {
-        if (iteration %% 100 == 0)
-          message("Iteration: ", iteration)
+        if (i %% 1000 == 0) {
+          message("Saving checkpoint at iteration ", i)
+          filename <- paste0("mcmc_bsl_", start_time, "_iteration_", i, ".rds")
+          saveRDS(result, filename)
+        }
 
         new_theta <- rand_proposal(theta)
         new_lik_params <- estimate_synth_lik_params(new_theta)
@@ -74,9 +80,14 @@ mcmc_bsl <- function(y,
                                     prior_log_density(theta)
     }
 
-    as_tibble(result) %>%
+    final_result <- as_tibble(result) %>%
       mutate(iteration = seq_along(theta)) %>%
       unnest_wider(theta)
+
+    filename <- paste0("mcmc_bsl_", start_time, "_final", ".rds")
+    saveRDS(final_result, filename)
+
+    final_result
 }
 
 

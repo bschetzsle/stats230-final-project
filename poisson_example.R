@@ -69,7 +69,7 @@ result <- mcmc_bsl(
   rand_proposal     = rand_proposal,
   statistic         = function(y) lm(sort(y) ~ poly(1:length(y), degree=3))$coef,
   initial_theta     = list(lambda = 6.29),
-  iterations = 1000
+  iterations        = 1000
 )
 
 plot_param(result, lambda, true_lambda) / plot_log_prob(result)
