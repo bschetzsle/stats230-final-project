@@ -83,8 +83,10 @@ true_theta <- list(
     N_0 = 1
 )
 
+y <- rand_ricker(50, true_theta)
+
 result <- mcmc_bsl(
-    y                 = rand_ricker(50, true_theta),
+    y                 = y,
     prior_log_density = prior_log_density,
     rand_likelihood   = rand_ricker,
     rand_proposal     = rand_proposal,
@@ -93,6 +95,13 @@ result <- mcmc_bsl(
     simulations       = 50,
     iterations        = 500000
 )
+
+saveRDS(
+    list(y = y, result = result),
+    "mcmc_bsl.rds"
+)
+
+
 
 plot_param(result, log_r, true_theta$log_r) /
 plot_param(result, phi, true_theta$phi) /
