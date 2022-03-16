@@ -26,7 +26,7 @@ mcmc_bsl <- function(y,
 
       mu <- apply(s, 2, mean)
 
-      mu_matrix <- t(replicate(simulations, mu))
+      mu_matrix <- matrix(mu, nrow=simulations, ncol=length(mu), byrow=TRUE)
       sigma <- t(s - mu_matrix) %*% (s - mu_matrix) / (simulations - 1)
 
       list(mu = mu, sigma = sigma)
