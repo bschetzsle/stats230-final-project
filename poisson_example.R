@@ -27,7 +27,8 @@ result <- mcmc_bsl(
     rand_likelihood   = function(n, theta) rpois(n, theta$lambda),
     rand_proposal     = rand_proposal,
     statistic         = statistic,
-    initial_theta     = list(lambda = 6.29)
+    initial_theta     = list(lambda = 6.29),
+    iterations        = 2000
 )
 
 plot_param(result, lambda, true_lambda) / plot_log_prob(result)
