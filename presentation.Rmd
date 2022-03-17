@@ -24,12 +24,12 @@ knitr::opts_chunk$set(
 source("bsl.R")
 ```
 
-# Original Paper(s)
+# Original paper(s)
 
-- Wood, S. N. (2010), "Statistical Inference for Noisy Nonlinear Ecological Dynamic Systems," *Nature*.
+- Wood, S. N. (2010). Statistical inference for noisy nonlinear ecological dynamic systems. *Nature*.
     - Introduced *synthetic likelihood* technique in a frequentist setting
-- L. F. Price, C. C. Drovandi, A. Lee \& D. J. Nott (2018), "Bayesian Synthetic Likelihood", *Journal of Computational and Graphical Statistics*.
-    - Extended to *Bayesian synthetic likelihood* technique in a Bayesian setting
+- Price, L. F., Drovandi, C. C., Lee, A., & Nott, D. J. (2018). Bayesian synthetic likelihood. *Journal of Computational and Graphical Statistics*.
+    - Extended Wood (2010) to *Bayesian synthetic likelihood* technique in a Bayesian setting
 
 # Motivating the synthetic likelihood
 
@@ -41,7 +41,10 @@ It is trivial to extend this to a Bayesian setup by placing a prior on the param
 
 The core requirement of the synthetic likelihood method is that we can still generate samples from the true likelihood.
 
-Upcoming motivating example: Ricker population model
+Upcoming motivating example from the paper: Ricker population model.
+
+(Note that the paper does not thoroughly address the concerns with this motivating example.
+We attempt to seek an understanding ourselves.)
 
 # Motivating the synthetic likelihood
 
@@ -94,19 +97,22 @@ This is expensive, in part because the number of integrals grows with the number
 
 Alternatively, instead of having the posterior $p(r, \sigma, \phi | \bm{Y})$, we could also try to do inference on the latent population variables: $p(N_1, ..., N_n, r, \sigma, \phi | \bm{Y})$.
 
-However, this would require the number Metropolis-Hastings proposals in each iteration to grow with the number of observed data points too (proposing values of each $N_t$), which is undesirable.
+However, this would require the dimension of Metropolis-Hastings proposals to grow with the number of observed data points too (proposing values of each $N_t$).
+
+(We think this is undesirable; the paper does not address the drawbacks of traditional MCMC for this model over using the synthetic likelihood.)
 
 # Bayesian synthetic likelihood
 
-What if, instead of using $p(\bm{Y} | \bm{\theta})$, we use:
+What if, instead of targeting the posterior $p(\bm{\theta} | \bm{Y})$ in our MCMC, we target:
 
-$$p(\bm{s_Y} | \bm{\theta})$$
+$$p(\bm{\theta} | \bm{s_Y})$$
 
 where $\bm{s_Y}$ is a vector of summary statistics for $\bm{Y}$, eg. the mean, quantiles, etc.
 
-Then, instead of targeting the posterior $p(\bm{\theta} | \bm{Y})$ in our MCMC, we can instead target $p(\bm{\theta} | \bm{s_Y})$.
+This would use a so-called "synthetic likelihood" $p(\bm{s_Y} | \bm{\theta})$ in place of the true likelihood $p(\bm{Y} | \bm{\theta})$.
 
-(This is similar to obtaining a maximum synthetic likelihood estimator instead of an MLE in the frequentist setting.)
+(This is similar to obtaining a maximum synthetic likelihood estimator instead of an MLE in the frequentist setting.
+The MSLE doesn't necessarily approximate the MLE; it is an alternative.)
 
 # Bayesian synthetic likelihood
 
@@ -122,7 +128,7 @@ We will see examples of both cases.
 
 # Bayesian synthetic likelihood
 
-$$\bm{s_Y} \sim \mathcal{N}(\bm{\mu(\theta)}, \bm{\Sigma(\theta)})$$
+$$\bm{s_Y} | \bm{\theta} \sim \mathcal{N}(\bm{\mu_\theta}, \bm{\Sigma_\theta})$$
 
 We still need to be able to evaluate this likelihood, though.
 
@@ -130,7 +136,7 @@ We still need to be able to evaluate this likelihood, though.
 
 Suppose we have a proposed value of $\bm{\theta}$.
 Let $\bm{Y^*_1}, ..., \bm{Y^*_n} \overset{\text{iid}}{\sim} p(\bm{Y} | \bm{\theta})$.
-In otherwords, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets from the distribution that hypothetically also generated the observed data $\bm{Y}$.
+In otherwords, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets from the same family of distributions that also generated the observed data $\bm{Y}$.
 
 # Bayesian synthetic likelihood
 
@@ -417,22 +423,53 @@ plot_param_hist(result, phi, true_theta$phi)) /
 ggplot() + theme_void())
 ```
 
+# Alternative methodology
 
+A common method used when likelihoods are intractable is approximate Bayesian computation (ABC).
 
+ABC is very similar to Bayesian synthetic likelihood (BSL), but it replaces the normality assumption of $\bm{s_Y} | \bm{\theta}$ with a nonparametric likelihood:
 
+$$
+p(\bm{s_Y} | \bm{\theta}) = \frac{1}{n} \sum_{i = 1}^n K_\epsilon (\rho(\bm{s_Y}, \bm{s_{Y^*_i}}))
+$$
 
+where $\bm{Y^*_i}$ are the Monte Carlo simulated datasets, $\rho$ is a distance measure, and $K_\epsilon$ is a kernel weighting function with bandwidth $\epsilon$.
 
+# Alternative methodology
 
+The BSL paper finds that the BSL posterior fell in the vicinity of the ABC posterior for the Ricker example, despite the non-normality of the summary statistics used.
+It also notes that ABC has two tuning parameters (the number of Monte Carlo samples $n$, and the bandwidth $\epsilon$), where as BSL only has one ($n$).
+Finally, the paper notes that the curse of dimensionality impacts ABC more than BSL due to its nonparametric nature.
 
-# comparison to ABC (or maybe this could go earlier?)
+(We did not implement ABC, since the BSL paper noted it ran ABC for 25 million iterations...)
 
-# Synthetic Likelihood, Wood (2010), we can get rid of this or move it
+# Reflecting on this paper
 
-- Statistical Problem: Fitting a model to data from chaotic biological systems using maximum likelihood can yield estimates that may be too sensitive to random noise
-- Model Choices: This paper is inherently frequentist in nature and uses a parametric Ricker model of population growth over time as an example
-- Computational Tools: Wood proposes a multivariate normal approximation to a vector of summary statistics and demonstrates its efficacy using Markov Chain Monte Carlo
-- Other Approaches Available: Standard methodology up to that point was to use likelihood based approaches for statistical inference on model parameters but these methods were known to perform poorly on chaotic systems
+We briefly discuss strengths and points of improvements for the BSL paper:
 
+Strengths:
 
+- The authors provided implementations for their algorithm and experiments
+    - We found this after implementing the algorithm and examples ourselves
+- The examples given appropriately increased in complexity
+    - The toy Poisson example used simple statistics and provided an analytical posterior to compare to
+    - The Ricker example demonstrated the method's abilities with more complex statistics
 
-# Paper pros and cons
+# Reflecting on this paper
+
+Points of improvement:
+
+- The authors provided implementation in Matlab (kidding...)
+- The paper did not thorougly discuss the limitations of BSL, particularly when it came to the choice of statistic
+- The paper did not motivate the use of synthetic likelihood in a Bayesian setting very well, beyond *"It is trivial to consider a Bayesian version of this"*
+
+# References
+
+- Wood, S. N. (2010). Statistical inference for noisy nonlinear ecological dynamic systems. *Nature*.
+- Price, L. F., Drovandi, C. C., Lee, A., & Nott, D. J. (2018). Bayesian synthetic likelihood. *Journal of Computational and Graphical Statistics*.
+- Sisson, S. A. (2011). Likelihood-free markov chain monte carlo. *Handbook of Markov Chain Monte Carlo*.
+    - Discusses *approximate Bayesian computation (ABC)*
+
+# Thank you
+
+Thank you for listening!
