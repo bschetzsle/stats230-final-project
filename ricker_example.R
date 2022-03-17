@@ -27,26 +27,17 @@ prior_log_density <- function(theta) {
 
 # Symmetric
 rand_proposal <- function(old_theta) {
-    #noise <- function(bandwidth)
-    #    runif(1, -bandwidth, bandwidth)
-
-    #list(
-    #    log_r = old_theta$log_r + noise(1),
-    #    phi   = abs(old_theta$phi + noise(0.5)),
-    #    sigma = abs(old_theta$sigma + noise(0.05)),
-    #    N_0   = old_theta$N_0
-    #)
-
     mu <- with(old_theta, c(log_r, phi, sigma))
 
     cov_mat <- matrix(
         c(2.25, -5.25, -1.35, -5.25, 25, 3, -1.35, 3, 2.25),
         nrow = 3
-    ) * 10^(-2)
+    ) * 0.01
 
     new_theta <- rmvnorm(1, mu, cov_mat)[1, ]
 
-    # They automatically use the same theta as before if sigma comes out negative... hm.
+    # They automatically use the same theta 
+    # as before if sigma comes out negative... hm.
     if (new_theta[3] <= 0)
         return(old_theta)
 
@@ -72,10 +63,6 @@ statistic <- function(y) {
     )
 }
 
-
-
-
-
 true_theta <- list(
     log_r = 3.8,
     sigma = 0.3,
@@ -83,6 +70,7 @@ true_theta <- list(
     N_0 = 1
 )
 
+set.seed(100)
 y <- rand_ricker(50, true_theta)
 
 result <- mcmc_bsl(
@@ -93,36 +81,10 @@ result <- mcmc_bsl(
     statistic         = statistic,
     initial_theta     = true_theta, # this is what they do
     simulations       = 50,
-    iterations        = 500000
+    iterations        = 100000
 )
-
-saveRDS(
-    list(y = y, result = result),
-    "mcmc_bsl.rds"
-)
-
-
 
 plot_param(result, log_r, true_theta$log_r) /
 plot_param(result, phi, true_theta$phi) /
 plot_param(result, sigma, true_theta$sigma) /
 plot_log_prob(result)
-
-
-
-
-
-
-
-
-
-
-iterations = length(result$theta)
-new_simulation = rand_ricker(n = 50, model=ricker_model(
-    log_r = result$theta[[iterations]]$log_r,
-    sigma = result$theta[[iterations]]$sigma,
-    phi = result$theta[[iterations]]$phi,
-    N_0 = result$theta[[iterations]]$N_0
-))
-plot(simulation$y, type="l")
-lines(new_simulation$y, col="red")

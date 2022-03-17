@@ -5,6 +5,8 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
     beamer_presentation:
         theme: "Madrid"
+header-includes:
+    - \usepackage{bm}
 ---
 
 ```{r include = F}
@@ -14,7 +16,9 @@ knitr::opts_chunk$set(
     message = F,
 
     # Hide the "##" from code output
-    comment = NULL
+    comment = NULL,
+
+    fig.height = 6.5
 )
 
 source("bsl.R")
@@ -23,56 +27,162 @@ source("bsl.R")
 # Original Paper(s)
 
 - Wood, S. N. (2010), "Statistical Inference for Noisy Nonlinear Ecological Dynamic Systems," *Nature*.
-    - Introduced *Synthetic Likelihood* technique
+    - Introduced *synthetic likelihood* technique in a frequentist setting
 - L. F. Price, C. C. Drovandi, A. Lee \& D. J. Nott (2018), "Bayesian Synthetic Likelihood", *Journal of Computational and Graphical Statistics*.
-    - Extended to *Synthetic Likelihood* technique using standard Bayesian methodology
+    - Extended to *Bayesian synthetic likelihood* technique in a Bayesian setting
 
-# small history of SL, why it came up in the wood paper & frequentist inference
+# Motivating the synthetic likelihood
 
-# how it can be easily brought to the bayesian setting with a prior
+At a high level, the synthetic likelihood is a replacement for an intractable true likelihood.
+Synthetic likelihood originates in a *frequentist setting*, when the likelihood function is too irregular to easily maximize (analytically or numerically).
+Maximizing the synthetic likelihood yields an point estimator for your parameters.
 
-# Synthetic Likelihood and Bayesian Synthetic Likelihood, An Overview
+However, it is trivial to switch to a Bayesian setup, placing a prior on the parameters, and obtaining a posterior distribution of parameters instead of point estimates.
 
-Synthetic likelihood uses a multivariate normal distribution to approximate the density of a vector of summary statistics. This technique is useful in situations where inference on model parameters is desired but calculating model likelihood is difficult or impossible, in which case standard maximum likelihood estimation is not available. If the model is easy to sample from, then different combinations of parameters can be used to generate data which is then condensed into a vector of summary statistics and compared to that of the observed data. Parameter combinations that yield statistics which resembles the observed statistics are deemed more likely. The summary statistics are chosen to capture relevant features of the model and elide problematic features such as noise.
+The core requirement of the synthetic likelihood method is that we can still generate samples from the true likelihood.
 
-# overview of the method itself
+Upcoming motivating example: Ricker population model
 
-IMAGE
+# Motivating the synthetic likelihood
 
-# Bayesian Synthetic Likelihood, a Toy Example
-
-Model:
-
+In the Ricker model, $N_t$ models the time course of a population, where
 \begin{align*}
-Y_i \sim Poisson(\lambda=30) \qquad i=1,...,100 \\\\
-\lambda \sim Gamma(\alpha=0.001, \beta=0.001)
+N_0 &= 1 \\
+N_t &= r N_{t-1} \mathrm{e}^{- N_{t-1} + e_{t-1}} \\
+e_t &\overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2)
 \end{align*}
 
-We want to find $P(\lambda|Y) \propto P(Y|\lambda)P(\lambda)$ without evaluating $P(Y|\lambda)$.
+In other words, $N_t | N_{t-1} \sim LogNormal(\log N_{t-1} + \log r - N_{t-1}, \sigma^2)$.
 
-# Bayesian Synthetic Likelihood, a Toy Example
+Additionally, suppose $N_t$ is not actually observed, but a sample from the population $Y_t | N_t \sim Poisson(\phi N_t)$ is observed.
+
+Our parameters are thus:
+$r$, a population growth rate parameter;
+$\sigma$, controlling random noise; and
+$\phi$, a scaling parameter for sampling from the population.
+
+# Motivating the synthetic likelihood
+
+To do Bayesian inference, we need:
+
+$$p(r, \sigma, \phi | \bm{Y}) \propto p(r, \sigma, \phi) p(\bm{Y} | r, \sigma, \phi)$$.
+
+Can we obtain the likelihood $p(\bm{Y} | r, \sigma, \phi)$ required?
+
+# Motivating the synthetic likelihood
+
+Let $\bm{\theta} = (r, \sigma, \phi)$.
+The joint likelihood with observed and latent variables is easier to work out:
+
+\begin{align*}
+p(\bm{Y}, \bm{N} | \bm{\theta})
+&= p(\bm{N} | \bm{\theta}) p(\bm{Y} | \bm{N}, \bm{\theta}) \\
+&= p(N_1 | \bm{\theta}) \prod_{t = 2}^n p(N_t | N_{t-1}, \bm{\theta}) \prod_{t = 1}^n p(Y_t | N_t, \bm{\theta}) \\
+&= LogNormal(N_1; ...) \prod_{t = 2}^n LogNormal(N_t; ...) \prod_{t = 1}^n Poisson(Y_t; ...)
+\end{align*}
+
+# Motivating the synthetic likelihood
+
+We would need to marginalize over all $N_t$:
+
+$$
+p(\bm{Y} | r, \sigma, \phi) =
+\int_{N_1} ... \int_{N_n} p(\bm{Y}, \bm{N} | \bm{\theta}) \, dN_1 ... dN_n
+$$
+
+This is expensive, in part because the number of integrals grows with the number of data points observed.
+
+Alternatively, instead of having the posterior $p(r, \sigma, \phi | \bm{Y})$, we could also try to do inference on the latent population variables: $p(N_1, ..., N_n, r, \sigma, \phi | \bm{Y})$.
+
+However, this would require the number Metropolis-Hastings proposals in each iteration to grow with the number of observed data points too (proposing values of each $N_t$), which is undesirable.
+
+# Bayesian synthetic likelihood
+
+What if, instead of using $p(\bm{Y} | \bm{\theta})$, we use:
+
+$$p(\bm{s_Y} | \bm{\theta})$$
+
+where $\bm{s_Y}$ is a vector of summary statistics for $\bm{Y}$, eg. the mean, quantiles, etc.
+
+Then, instead of targeting the posterior $p(\bm{\theta} | \bm{Y})$ in our MCMC, we can instead target $p(\bm{\theta} | \bm{s_Y})$.
+
+(This is similar to obtaining a maximum synthetic likelihood estimator instead of an MLE in the frequentist setting.)
+
+# Bayesian synthetic likelihood
+
+Of course, depending on your choice of statistics, this *synthetic likelihood* may not be tractable either.
+This method consequently makes a normality assumption:
+
+$$\bm{s_Y} | \bm{\theta} \sim \mathcal{N}(\bm{\mu_\theta}, \bm{\Sigma_\theta})$$
+
+where $\bm{\mu}$ and $\bm{\Sigma}$ change with $\theta$.
+
+Ideally, your statistics truly are normally distributed, but this may not be the case.
+We will see examples of both cases.
+
+# Bayesian synthetic likelihood
+
+$$\bm{s_Y} \sim \mathcal{N}(\bm{\mu(\theta)}, \bm{\Sigma(\theta)})$$
+
+We still need to be able to evaluate this likelihood, though.
+
+*Under the assumption that we can sample $\bm{Y}$ from the real likelihood*, we can estimate the parameters of the synthetic likelihood via Monte Carlo approximation...
+
+Suppose we have a proposed value of $\bm{\theta}$.
+Let $\bm{Y^*_1}, ..., \bm{Y^*_n} \overset{\text{iid}}{\sim} p(\bm{Y} | \bm{\theta})$.
+In otherwords, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets like the observed data $\bm{Y}$.
+
+# Bayesian synthetic likelihood
+
+Now, for each simulated dataset $\bm{Y^*_i}$, calculate the corresponding summary statistics $\bm{s_{Y^*_i}}$ in the same manner as $\bm{s_Y}$.
+
+Then,
+\begin{align*}
+\bm{\hat{\mu_\theta}} &= \frac{1}{n} \sum_{i = 1}^n \bm{s_{Y^*_i}} \\
+\bm{\hat{\Sigma_\theta}} &= \frac{1}{n-1} \sum_{i = 1}^n (\bm{s_{Y^*_i}} - \bm{\hat{\mu_\theta}}) (\bm{s_{Y^*_i}} - \bm{\hat{\mu_\theta}})^\top
+\end{align*}
+
+With these estimates, we can evaluate the synthetic likelihood of various proposed values of $\theta$ for our observed summary statistics $\bm{s_Y}$.
+
+# Bayesian synthetic likelihood
+
+```{r out.height = "80%", fig.align = "center"}
+knitr::include_graphics("images/sl_diagram.png")
+```
+
+# A toy example
+
+Consider the model:
+\begin{align*}
+Y_i | \lambda &\overset{\text{iid}}{\sim} Poisson(\lambda) \qquad i=1,...,100 \\
+\lambda &\sim Gamma(\alpha=0.001, \beta=0.001)
+\end{align*}
+
+Suppose we generate observations $Y_1, ..., Y_{100}$ using $lambda = 30$ and want to conduct inference on $\lambda$.
+
+We want to find $p(\lambda | \bm{Y}) \propto p(\bm{Y} | \lambda) p(\lambda)$ without evaluating $p(\bm{Y} | \lambda)$.
+
+# A toy example
 
 Note:
-
 \begin{align*}
-P(\lambda|Y) &\propto \left[ \prod_{i=1}^{100} \frac{\lambda^{y_i}}{y_i!} e^{-\lambda}\right] \left[ \frac{\beta^\alpha}{\Gamma(\alpha)}\lambda^{\alpha-1}e^{-\beta\lambda}\right] \\\\
-&\propto \lambda^{\alpha+\sum_{i=1}^{100}y_i-1}e^{-\lambda(\beta+n)} \\\\
-&\sim Gamma(\alpha=0.001+\sum_{i=1}^{100}y_i, \beta=100.001)
+p(\lambda | \bm{Y})
+&\propto \left[ \prod_{i=1}^{100} \frac{\lambda^{Y_i}}{Y_i!} e^{-\lambda}\right] \left[ \frac{\beta^\alpha}{\Gamma(\alpha)}\lambda^{\alpha-1}e^{-\beta\lambda}\right] \\\\
+&\propto \lambda^{\alpha+\sum_{i=1}^{100}Y_i-1}e^{-\lambda(\beta+n)} \\
+&\sim Gamma(\alpha=0.001+\sum_{i=1}^{100}Y_i, \beta=100.001)
 \end{align*}
 
-So in this toy example the posterior distribution is known analytically.
+So, in this toy example, the posterior distribution is known analytically.
 
-# Bayesian Synthetic Likelihood, a Toy Example
+# A toy example
 
-Choosing a statistic:
-
-The paper uses the mean as the statistic to summarize both the observed and generated data:
+How should we choose a statistic? The paper uses the mean:
 
 \[s_Y = \frac{1}{100}\sum_{i=1}^{100}Y_i\]
 
 This is the sufficient statistic for the Poisson distribution; all the information contained in the data is also contained in this statistic. Also, by the central limit theorem, the distribution of the mean of a Poisson sample can be adequately approximated by a normal distribution, so synthetic likelihood should perform well in this setting.
 
-# Bayesian Synthetic Likelihood, a Toy Example
+# A toy example
 
 ```{r}
 true_lambda <- 30
@@ -82,45 +192,12 @@ y <- rpois(100, true_lambda)
 
 result <- readRDS("mcmc_results/mcmc_bsl_poisson_mean.rds")
 
-plot_param(result, lambda, true_lambda) / plot_log_prob(result)
+(plot_param_traceplot(result, lambda, true_lambda) +
+plot_log_prob_traceplot(result)) /
+plot_param_hist(result, lambda, true_lambda)
 ```
 
-# Bayesian Synthetic Likelihood, a Toy Example
-
-```{r}
-result %>%
-    filter(iteration >= 100) %>%
-    ggplot() +
-    geom_histogram(aes(lambda, ..density..)) +
-    stat_function(
-        geom = "area",
-        fun = dgamma,
-        args = list(
-            shape = 0.001 + sum(y),
-            rate = 100.001
-        ),
-        fill = "dodgerblue4",
-        alpha = 0.5
-    )
-```
-
-# Bayesian Synthetic Likelihood, Further Exploration
-
-We were interested in trying other statistics to see how well synthetic likelihood performed. This was our own exploration and was not addressed in the paper. We started with the maximal statistic
-
-$$s_Y = \text{max}(Y)$$
-
-This is not a sufficient statistic for Poisson data and also not approximately normally distributed across many samples. We would expect the synthetic likelihood method to have a harder time identifying the true analytic posterior.
-
-# Bayesian Synthetic Likelihood, Further Exploration
-
-```{r}
-result <- readRDS("mcmc_results/mcmc_bsl_poisson_max.rds")
-
-plot_param(result, lambda, true_lambda) / plot_log_prob(result)
-```
-
-# Bayesian Synthetic Likelihood, Further Exploration
+# A toy example
 
 ```{r}
 result %>%
@@ -137,14 +214,57 @@ result %>%
         fill = "dodgerblue4",
         alpha = 0.5
     ) +
-    expand_limits(x = 27)
+    ggtitle("Posterior samples (grey) with analytic posterior (blue)") +
+    theme_minimal(base_size = 18)
 ```
 
-# Bayesian Synthetic Likelihood, Further Exploration
+# Further exploration
+
+We were interested in trying other statistics to see how well synthetic likelihood performed. This was our own exploration and was not addressed in the paper.
+
+We started with the maximal statistic:
+
+$$s_Y = \text{max}(\bm{Y})$$
+
+This is not a sufficient statistic for Poisson data and also not approximately normally distributed across many samples. We would expect the synthetic likelihood method to have a harder time identifying the true analytic posterior.
+
+# Further Exploration
+
+```{r}
+result <- readRDS("mcmc_results/mcmc_bsl_poisson_max.rds")
+
+(plot_param_traceplot(result, lambda, true_lambda) +
+plot_log_prob_traceplot(result)) /
+plot_param_hist(result, lambda, true_lambda)
+```
+
+# Further exploration
+
+```{r}
+result %>%
+    filter(iteration >= 100) %>%
+    ggplot() +
+    geom_histogram(aes(lambda, ..density..)) +
+    stat_function(
+        geom = "area",
+        fun = dgamma,
+        args = list(
+            shape = 0.001 + sum(y),
+            rate = 100.001
+        ),
+        fill = "dodgerblue4",
+        alpha = 0.5
+    ) +
+    expand_limits(x = 27) +
+    ggtitle("Posterior samples (grey) with analytic posterior (blue)") +
+    theme_minimal(base_size = 18)
+```
+
+# Further exploration
 
 The synthetic likelihood approximation overestimated the true lambda. This is because the data had an unusually large maximal value.
 
-```{r}
+```{r out.height = "40%", out.width = "50%", fig.align = "center"}
 maxes <- replicate(1000, max(rpois(100, true_lambda)))
 
 ggplot() +
@@ -153,49 +273,156 @@ ggplot() +
         fill = "dodgerblue4",
         alpha = 0.5
     ) +
-    geom_vline(xintercept = max(y))
+    geom_vline(xintercept = max(y)) +
+    ggtitle("Approximate density of maximum order statistic") +
+    xlab("max(Y)") +
+    theme_grey(base_size = 25)
 ```
 
-This illustrates how sensitive this method is to the choice of statistic. The approximation will perform optimally on sufficient statistics but with complicated models it may not be possible to identify the sufficient statistics. Therefore, statistics must be chosen which capture the important features of the model.
+This illustrates how sensitive this method is to the choice of statistic.
+The approximation will perform optimally on sufficient statistics, but with complicated models, it may not be possible to identify the sufficient statistics. 
+Therefore, statistics must be chosen which capture the important features of the model.
 
-# Bayesian Synthetic Likelihood, Further Exploration
+# Further exploration
 
-We attempted this on the toy Poisson model by using the coefficients of a polynomial regression on the ordered data as our statistics.
+As a final choice of statistics, we used the coefficients of a polynomial regression on the ordered data.
 
 $$Y_{(i)} = \beta_0 + \beta_1 i + \beta_2 i^2 + \beta_3 i^3$$
 
-```{r}
-ggplot() +
-    geom_point(aes(seq_along(y), sort(y)))
-
-result <- readRDS("mcmc_results/mcmc_bsl_poisson_regression.rds")
-
-plot_param(result, lambda, true_lambda) / plot_log_prob(result)
-
-# Do we need this plot
-replicate(
-    1000,
-    lm(sort(rpois(100, 30)) ~ poly(seq_along(y), degree = 3))$coef
-) %>%
-    t() %>%
-    as_tibble() %>%
-    magrittr::set_colnames(
-        c("Intercept", paste("Coef", 1:3))
-    ) %>%
-    pivot_longer(
-        cols = colnames(.),
-        names_to = "statistic"
-    ) %>%
-    ggplot() +
-    stat_density(aes(value),
-        geom = "area",
-        fill = "dodgerblue4",
-        alpha = 0.5
+```{r fig.height = 4}
+ggplot(mapping = aes(seq_along(y), sort(y))) +
+    geom_point() +
+    geom_smooth(
+        method = "lm",
+        formula = y ~ poly(x, degree = 3),
+        color = "dodgerblue4",
+        se = F,
+        alpha = 0.7
     ) +
-    facet_wrap(vars(statistic))
+    labs(
+        title = "Plotting Y_(i) and the polynomial regression (blue)",
+        y = "Y_(i)",
+        x = "i"
+    ) +
+    theme_grey(base_size = 18)
 ```
 
-# example with ricker to show that it still works even when our summary statistics aren't exactly multivariate normal
+# Further exploration
+
+```{r}
+result <- readRDS("mcmc_results/mcmc_bsl_poisson_regression.rds")
+
+(plot_param_traceplot(result, lambda, true_lambda) +
+plot_log_prob_traceplot(result)) /
+plot_param_hist(result, lambda, true_lambda)
+```
+
+# Ricker population model example
+
+We now return to the Ricker model from the beginning of the presentation to provide a more complex use case.
+
+Some things to consider about the Ricker model vs the toy Poisson model:
+
+- The sufficient statistics are not easily available
+- We will need to rely on more complex, non-normal statistics
+
+# Ricker population model example
+
+As a refresher, recall we observe a sample $Y_t$ of a population $N_t$:
+
+\begin{align*}
+N_t | N_{t-1} &\sim LogNormal(\log N_{t-1} + \log r - N_{t-1}, \sigma^2) \\
+Y_t | N_t &\sim Poisson(\phi N_t)
+\end{align*}
+
+Suppose we observe $Y_1, ..., Y_{50}$ with $(\log r, \sigma, \phi) = (3.8, 0.3, 10)$.
+
+To use synthetic likelihood, we need to ensure we can sample simulated $\bm{Y}$ from the model.
+Thankfully, sampling is straightforward; using $N_0 = 1$, you can sample $N_1, N_2, ...$ sequentially, then sample $Y_t$ for each $N_t$.
+
+We place an uninformative prior over all parameters.
+
+# Ricker population model example
+
+```{r}
+rand_ricker <- function(n, theta) {
+    rand_N_t <- function(prev_N)
+        rlnorm(1, log(prev_N) + theta$log_r - prev_N, theta$sigma)
+
+    N <- Reduce(
+        function(prev_N, ...) rand_N_t(prev_N),
+        c(theta$N_0, seq_len(n)),
+        accumulate = T
+    )
+
+    y <- rpois(length(N), theta$phi * N)
+    names(y) <- paste0("t", 0:n)
+
+    y
+}
+
+true_theta <- list(
+    log_r = 3.8,
+    sigma = 0.3,
+    phi = 10,
+    N_0 = 1
+)
+
+set.seed(100)
+y <- rand_ricker(50, true_theta)
+
+result <- readRDS("mcmc_results/mcmc_bsl_ricker.rds")
+
+ggplot(mapping = aes(seq_along(y) - 1, y)) +
+    geom_line(alpha = 0.5) +
+    geom_point() +
+    labs(
+        title = "Visualizing observed data over time",
+        x = "t",
+        y = "Y_t"
+    ) +
+    theme_minimal(base_size = 18)
+```
+
+# Ricker population model example
+
+This data is noisy and runs over time.
+What sorts of statistics will we use?
+
+- **Marginal distribution statistics**: to summarize the "shape" of the marginal distribution
+    - Mean: $\overline{Y}$
+    - Number of zeros: $\sum_{t = 1}^{50} \mathbf 1_{\{0\}}(Y_t)$
+- **Dynamic process statistics**: characterize the relationship between $Y_t$ and $Y_{t-1}$ (and possibly more history)
+    - Autoregressive model coefficients: $Y_t^{0.3} \sim Y_{t-1}^{0.3} + Y_{t-1}^{0.6}$
+        - Note the exponents were tuned to improve fit
+    - Coefficients of regression on ordered differences: $(Y_t - Y_{t-1}) \sim Y_t + Y_t^2 + Y_t^3$
+- **Time series statistics**: sensitive to the shape and period of fluctuations
+    - Coefficients of the autocovariance function, up to lag 5
+
+# Ricker population model example
+
+```{r}
+(plot_param_traceplot(result, log_r, true_theta$log_r) +
+plot_param_traceplot(result, phi, true_theta$phi)) /
+(plot_param_traceplot(result, sigma, true_theta$sigma) +
+plot_log_prob_traceplot(result))
+```
+
+# Ricker population model example
+
+```{r}
+(plot_param_hist(result, log_r, true_theta$log_r) +
+plot_param_hist(result, phi, true_theta$phi)) /
+(plot_param_hist(result, sigma, true_theta$sigma) +
+ggplot() + theme_void())
+```
+
+
+
+
+
+
+
 
 # comparison to ABC (or maybe this could go earlier?)
 
@@ -206,22 +433,6 @@ replicate(
 - Computational Tools: Wood proposes a multivariate normal approximation to a vector of summary statistics and demonstrates its efficacy using Markov Chain Monte Carlo
 - Other Approaches Available: Standard methodology up to that point was to use likelihood based approaches for statistical inference on model parameters but these methods were known to perform poorly on chaotic systems
 
-# Ricker Model
 
-$$
-N_{t+1} = r N_{t} \text{e}^{-N_{t} + e_t}  \qquad \text{where } e_t \sim N(0, \sigma_e^2)
-$$
-
-$$
-Y_t|N_t \sim Poisson(\lambda = \phi N_t)
-$$
-
-$N_t$ is an autoregressive time-series modeling true, unknown population density at discrete time points. $r$ is a population growth rate parameter, $e_t$ is random noise. $Y_t$ are the number of individuals sampled from the total population, $\phi$ is a scaling parameter.
-
-# Ricker Model
-
-IMAGE
-
-# Ricker Model, our results
 
 # Paper pros and cons

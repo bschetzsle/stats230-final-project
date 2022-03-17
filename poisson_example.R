@@ -43,7 +43,7 @@ result <- mcmc_bsl(
   prior_log_density = prior_log_density,
   rand_likelihood   = function(n, theta) rpois(n, theta$lambda),
   rand_proposal     = rand_proposal,
-  statistic         = function(y) lm(sort(y) ~ poly(1:length(y), degree=3))$coef,
+  statistic         = function(y) lm(sort(y) ~ poly(seq_along(y), degree = 3))$coef,
   initial_theta     = list(lambda = 6),
   iterations        = 1000
 )

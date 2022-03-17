@@ -91,19 +91,34 @@ mcmc_bsl <- function(y,
 }
 
 
-plot_param <- function(result, param, true_value) {
-  p1 <- ggplot(result, aes(iteration, {{param}})) +
+plot_param_traceplot <- function(result, param, true_value) {
+  ggplot(result, aes(iteration, {{param}})) +
     geom_line() +
-    geom_hline(yintercept = true_value, color = "dodgerblue4")
-
-  p2 <- ggplot(result, aes({{param}})) +
-    geom_histogram() +
-    geom_vline(xintercept = true_value, color = "dodgerblue4")
-
-  p1 + p2
+    geom_hline(
+      yintercept = true_value,
+      color = "dodgerblue4"
+    ) +
+    ggtitle("Traceplot (samples)") +
+    theme_gray(base_size = 18)
 }
 
-plot_log_prob <- function(result) {
+plot_param_hist <- function(result, param, true_value) {
+  ggplot(result, aes({{param}})) +
+    geom_histogram() +
+    geom_vline(
+      xintercept = true_value,
+      color = "dodgerblue4",
+      size = 2,
+      alpha = 0.5
+    ) +
+    ggtitle("Posterior Histogram") +
+      theme_gray(base_size = 18)
+}
+
+plot_log_prob_traceplot <- function(result) {
     ggplot(result, aes(iteration, log_joint_prob)) +
-        geom_line()
+      geom_line() +
+      ggtitle("Traceplot (log joint density)") +
+      ylab("log joint density") +
+      theme_gray(base_size = 18)
 }
