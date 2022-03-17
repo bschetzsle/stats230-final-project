@@ -34,8 +34,12 @@ source("bsl.R")
 # Motivating the synthetic likelihood
 
 At a high level, the synthetic likelihood is a replacement for an intractable true likelihood.
+
 Synthetic likelihood originates in a *frequentist setting*, when the likelihood function is too irregular to easily maximize (analytically or numerically).
+
 Maximizing the synthetic likelihood yields a point estimator for your parameters.
+
+# Motivating the synthetic likelihood
 
 It is trivial to extend this to a Bayesian setup by placing a prior on the parameters, obtaining a posterior distribution of parameters instead of point estimates.
 
@@ -68,7 +72,7 @@ $\phi$, a scaling parameter for sampling from the population.
 
 To do Bayesian inference, we need:
 
-$$p(r, \sigma, \phi | \bm{Y}) \propto p(r, \sigma, \phi) p(\bm{Y} | r, \sigma, \phi)$$.
+$$p(r, \sigma, \phi | \bm{Y}) \propto p(r, \sigma, \phi) p(\bm{Y} | r, \sigma, \phi)$$
 
 Can we obtain the likelihood $p(\bm{Y} | r, \sigma, \phi)$ required?
 
@@ -94,6 +98,8 @@ p(\bm{Y} | r, \sigma, \phi) =
 $$
 
 This is expensive, in part because the number of integrals grows with the number of data points observed.
+
+# Motivating the synthetic likelihood
 
 Alternatively, instead of having the posterior $p(r, \sigma, \phi | \bm{Y})$, we could also try to do inference on the latent population variables: $p(N_1, ..., N_n, r, \sigma, \phi | \bm{Y})$.
 
@@ -136,7 +142,8 @@ We still need to be able to evaluate this likelihood, though.
 
 Suppose we have a proposed value of $\bm{\theta}$.
 Let $\bm{Y^*_1}, ..., \bm{Y^*_n} \overset{\text{iid}}{\sim} p(\bm{Y} | \bm{\theta})$.
-In otherwords, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets from the same family of distributions that also generated the observed data $\bm{Y}$.
+
+In other words, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets from the same family of distributions that also generated the observed data $\bm{Y}$.
 
 # Bayesian synthetic likelihood
 
@@ -179,6 +186,7 @@ p(\lambda | \bm{Y})
 \end{align*}
 
 So, in this toy example, the posterior distribution is known analytically.
+We will compare our MCMC results to this distribution.
 
 # A toy example
 
@@ -186,7 +194,9 @@ How should we choose a statistic? The paper uses the mean:
 
 \[s_Y = \frac{1}{100}\sum_{i=1}^{100}Y_i\]
 
-This is the sufficient statistic for the Poisson distribution; all the information contained in the data is also contained in this statistic. Also, by the central limit theorem, the distribution of the mean of a Poisson sample can be adequately approximated by a normal distribution, so synthetic likelihood should perform well in this setting.
+This is the sufficient statistic for the Poisson distribution.
+
+By the central limit theorem, the distribution of the mean can be adequately approximated by a normal distribution, so synthetic likelihood should perform well in this setting.
 
 # A toy example
 
@@ -286,8 +296,6 @@ ggplot() +
 ```
 
 This illustrates how sensitive this method is to the choice of statistic.
-The approximation will perform optimally on sufficient statistics, but with complicated models, it may not be possible to identify the sufficient statistics. 
-Therefore, statistics must be chosen which capture the important features of the model.
 
 # Further exploration
 
@@ -437,9 +445,11 @@ where $\bm{Y^*_i}$ are the Monte Carlo simulated datasets, $\rho$ is a distance 
 
 # Alternative methodology
 
-The BSL paper finds that the BSL posterior fell in the vicinity of the ABC posterior for the Ricker example, despite the non-normality of the summary statistics used.
-It also notes that ABC has two tuning parameters (the number of Monte Carlo samples $n$, and the bandwidth $\epsilon$), where as BSL only has one ($n$).
-Finally, the paper notes that the curse of dimensionality impacts ABC more than BSL due to its nonparametric nature.
+The paper's comparison of BSL and ABC:
+
+- The BSL posterior fell in the vicinity of the ABC posterior for the Ricker example, despite the non-normality of the summary statistics used
+- ABC has two tuning parameters (the number of Monte Carlo samples $n$, and the bandwidth $\epsilon$), where as BSL only has one ($n$)
+- The curse of dimensionality impacts ABC more than BSL due to its nonparametric nature
 
 (We did not implement ABC, since the BSL paper noted it ran ABC for 25 million iterations...)
 
