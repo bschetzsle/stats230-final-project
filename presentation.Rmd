@@ -35,9 +35,9 @@ source("bsl.R")
 
 At a high level, the synthetic likelihood is a replacement for an intractable true likelihood.
 Synthetic likelihood originates in a *frequentist setting*, when the likelihood function is too irregular to easily maximize (analytically or numerically).
-Maximizing the synthetic likelihood yields an point estimator for your parameters.
+Maximizing the synthetic likelihood yields a point estimator for your parameters.
 
-However, it is trivial to switch to a Bayesian setup, placing a prior on the parameters, and obtaining a posterior distribution of parameters instead of point estimates.
+It is trivial to extend this to a Bayesian setup by placing a prior on the parameters, obtaining a posterior distribution of parameters instead of point estimates.
 
 The core requirement of the synthetic likelihood method is that we can still generate samples from the true likelihood.
 
@@ -130,7 +130,7 @@ We still need to be able to evaluate this likelihood, though.
 
 Suppose we have a proposed value of $\bm{\theta}$.
 Let $\bm{Y^*_1}, ..., \bm{Y^*_n} \overset{\text{iid}}{\sim} p(\bm{Y} | \bm{\theta})$.
-In otherwords, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets like the observed data $\bm{Y}$.
+In otherwords, given a proposed value of $\bm{\theta}$, generate $n$ iid datasets from the distribution that hypothetically also generated the observed data $\bm{Y}$.
 
 # Bayesian synthetic likelihood
 
@@ -142,7 +142,7 @@ Then,
 \bm{\hat{\Sigma_\theta}} &= \frac{1}{n-1} \sum_{i = 1}^n (\bm{s_{Y^*_i}} - \bm{\hat{\mu_\theta}}) (\bm{s_{Y^*_i}} - \bm{\hat{\mu_\theta}})^\top
 \end{align*}
 
-With these estimates, we can evaluate the synthetic likelihood of various proposed values of $\theta$ for our observed summary statistics $\bm{s_Y}$.
+With these estimates, we can evaluate the synthetic likelihood of various proposed values of $\bm{\theta}$ for our observed summary statistics $\bm{s_Y}$.
 
 # Bayesian synthetic likelihood
 
@@ -158,7 +158,7 @@ Y_i | \lambda &\overset{\text{iid}}{\sim} Poisson(\lambda) \qquad i=1,...,100 \\
 \lambda &\sim Gamma(\alpha=0.001, \beta=0.001)
 \end{align*}
 
-Suppose we generate observations $Y_1, ..., Y_{100}$ using $lambda = 30$ and want to conduct inference on $\lambda$.
+Suppose we generate observations $Y_1, ..., Y_{100}$ using $\lambda = 30$ and want to conduct inference on $\lambda$.
 
 We want to find $p(\lambda | \bm{Y}) \propto p(\bm{Y} | \lambda) p(\lambda)$ without evaluating $p(\bm{Y} | \lambda)$.
 
