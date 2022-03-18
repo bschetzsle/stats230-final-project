@@ -249,9 +249,9 @@ This is not a sufficient statistic for Poisson data and also not approximately n
 ```{r}
 result <- readRDS("mcmc_results/mcmc_bsl_poisson_max.rds")
 
-(plot_param_traceplot(result, lambda, true_lambda) +
-plot_log_prob_traceplot(result)) /
-plot_param_hist(result, lambda, true_lambda)
+(plot_param_traceplot(result, lambda, true_lambda, base_size = 18) +
+plot_log_prob_traceplot(result, base_size = 18)) /
+plot_param_hist(result, lambda, true_lambda, base_size = 18)
 ```
 
 # Further exploration
@@ -326,9 +326,9 @@ ggplot(mapping = aes(seq_along(y), sort(y))) +
 ```{r}
 result <- readRDS("mcmc_results/mcmc_bsl_poisson_regression.rds")
 
-(plot_param_traceplot(result, lambda, true_lambda) +
-plot_log_prob_traceplot(result)) /
-plot_param_hist(result, lambda, true_lambda)
+(plot_param_traceplot(result, lambda, true_lambda, base_size = 18) +
+plot_log_prob_traceplot(result, base_size = 18)) /
+plot_param_hist(result, lambda, true_lambda, base_size = 18)
 ```
 
 # Ricker population model example
@@ -416,18 +416,18 @@ What sorts of statistics will we use?
 # Ricker population model example
 
 ```{r}
-(plot_param_traceplot(result, log_r, true_theta$log_r) +
-plot_param_traceplot(result, phi, true_theta$phi)) /
-(plot_param_traceplot(result, sigma, true_theta$sigma) +
-plot_log_prob_traceplot(result))
+(plot_param_traceplot(result, log_r, true_theta$log_r, base_size = 18) +
+plot_param_traceplot(result, phi, true_theta$phi, base_size = 18)) /
+(plot_param_traceplot(result, sigma, true_theta$sigma, base_size = 18) +
+plot_log_prob_traceplot(result, base_size = 18))
 ```
 
 # Ricker population model example
 
 ```{r}
-(plot_param_hist(result, log_r, true_theta$log_r) +
-plot_param_hist(result, phi, true_theta$phi)) /
-(plot_param_hist(result, sigma, true_theta$sigma) +
+(plot_param_hist(result, log_r, true_theta$log_r, base_size = 18) +
+plot_param_hist(result, phi, true_theta$phi, base_size = 18)) /
+(plot_param_hist(result, sigma, true_theta$sigma, base_size = 18) +
 ggplot() + theme_void())
 ```
 

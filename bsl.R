@@ -91,7 +91,7 @@ mcmc_bsl <- function(y,
 }
 
 
-plot_param_traceplot <- function(result, param, true_value) {
+plot_param_traceplot <- function(result, param, true_value, ...) {
   ggplot(result, aes(iteration, {{param}})) +
     geom_line() +
     geom_hline(
@@ -99,10 +99,10 @@ plot_param_traceplot <- function(result, param, true_value) {
       color = "dodgerblue4"
     ) +
     ggtitle("Traceplot (samples)") +
-    theme_gray(base_size = 18)
+    theme_gray(...)
 }
 
-plot_param_hist <- function(result, param, true_value) {
+plot_param_hist <- function(result, param, true_value, ...) {
   ggplot(result, aes({{param}})) +
     geom_histogram() +
     geom_vline(
@@ -111,14 +111,14 @@ plot_param_hist <- function(result, param, true_value) {
       size = 2,
       alpha = 0.5
     ) +
-    ggtitle("Posterior Histogram") +
-      theme_gray(base_size = 18)
+    ggtitle("Posterior histogram") +
+    theme_gray(...)
 }
 
-plot_log_prob_traceplot <- function(result) {
-    ggplot(result, aes(iteration, log_joint_prob)) +
-      geom_line() +
-      ggtitle("Traceplot (log joint density)") +
-      ylab("log joint density") +
-      theme_gray(base_size = 18)
+plot_log_prob_traceplot <- function(result, ...) {
+  ggplot(result, aes(iteration, log_joint_prob)) +
+    geom_line() +
+    ggtitle("Traceplot (log joint density)") +
+    ylab("log joint density") +
+    theme_gray(...)
 }
