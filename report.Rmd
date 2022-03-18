@@ -176,9 +176,7 @@ p(\lambda | \bm{Y})
 
 Thus, for any choice of statistic $\bm{s_Y}$ we can compare the distribution of posterior samples of $\lambda|\bm{s_Y}$ to the known, true posterior conditional on the full data, $\lambda|\bm{Y}$. The authors acknowledge that this is not always the aim of BSL. However, when $\bm{s_Y}$ is a sufficient statistic for the sample $\bm{Y}$ the two distributions are the same. Price et. al. use the mean, $\bm{s_Y}=\bar{Y}$, as the statistic which is sufficient for Poisson samples. The mean also has the added benefit that the central limit theorem guarantees that means of repeated samples are normally distributed so the central assumption behing BSL is satisfied automatically.
 
-We replicate this setup and generate 1000 posterior samples of $\lambda$. We start at $\lambda$
-
-# A toy example
+We replicate this setup and generate 1000 posterior samples of $\lambda$. We start at $\lambda=6$, far from the actual $\lambda=30$, so that we can see BSL converging to the true value. The resulting trace plot and histogram of posterior samples compared to the true analytic posterior are shown below.
 
 ```{r cache=TRUE}
 true_lambda <- 30
@@ -188,14 +186,7 @@ y <- rpois(100, true_lambda)
 
 result <- readRDS("mcmc_results/mcmc_bsl_poisson_mean.rds")
 
-(plot_param_traceplot(result, lambda, true_lambda) +
-plot_log_prob_traceplot(result)) /
-plot_param_hist(result, lambda, true_lambda)
-```
-
-# A toy example
-
-```{r}
+plot_param_traceplot(result, lambda, true_lambda) /
 result %>%
     filter(iteration >= 100) %>%
     ggplot() +
@@ -214,29 +205,12 @@ result %>%
     theme_minimal(base_size = 18)
 ```
 
-# Further exploration
+Once we had our BSL code working it was trivial to swap in different summary statistics. We continued to explore this toy problem beyond what was presented by Price et. al., next selecting the maximal value for our statistic, $\bm{s_Y} = \text{max}(\bm{Y})$. This statistic was appealing because it is easy to compute but is neither sufficient nor normally distributed, allowing us to explore the impact of a poorly-selected statistic on posterior inference. Results of the simulation are below.
 
-We were interested in trying other statistics to see how well synthetic likelihood performed. This was our own exploration and was not addressed in the paper.
-
-We started with the maximal statistic:
-
-$$s_Y = \text{max}(\bm{Y})$$
-
-This is not a sufficient statistic for Poisson data and also not approximately normally distributed across many samples. We would expect the synthetic likelihood method to have a harder time identifying the true analytic posterior.
-
-# Further Exploration
-
-```{r}
+```{r cache=TRUE}
 result <- readRDS("mcmc_results/mcmc_bsl_poisson_max.rds")
 
-(plot_param_traceplot(result, lambda, true_lambda) +
-plot_log_prob_traceplot(result)) /
-plot_param_hist(result, lambda, true_lambda)
-```
-
-# Further exploration
-
-```{r}
+plot_param_traceplot(result, lambda, true_lambda) /
 result %>%
     filter(iteration >= 100) %>%
     ggplot() +
@@ -256,34 +230,16 @@ result %>%
     theme_minimal(base_size = 18)
 ```
 
-# Further exploration
+The BSL substitution resulted in posterior samples of $\lambda$ conditional on $\bm{s_Y}$ that are radically different from the distribution of $\lambda|\bm{Y}$. We looked into why this is the case and found that the maximum value in our data, $\bm{Y_{(100)}}$, was unusually large so the MCMC algorithm was identifying larger values of $\lambda$ as more likely to have generated such a large maximal statistic than the true value of $\lambda=30$. This reified for us the sensitivity of this method on the choice of statistic. Further, once a statistic is chosen if the observed data has an unusual value for this statistic posterior inference can radically differ from the truth.
 
-The synthetic likelihood approximation overestimated the true lambda. This is because the data had an unusually large maximal value.
-
-```{r out.height = "40%", out.width = "50%", fig.align = "center"}
-maxes <- replicate(1000, max(rpois(100, true_lambda)))
-
-ggplot() +
-    stat_density(aes(maxes),
-        geom = "area",
-        fill = "dodgerblue4",
-        alpha = 0.5
-    ) +
-    geom_vline(xintercept = max(y)) +
-    ggtitle("Approximate density of maximum order statistic") +
-    xlab("max(Y)") +
-    theme_grey(base_size = 25)
-```
-
-This illustrates how sensitive this method is to the choice of statistic.
-
-# Further exploration
-
-As a final choice of statistics, we used the coefficients of a polynomial regression on the ordered data.
+We finally tried to choose a statistic that could capture much of the nuance in our model without being sufficient. We settled on the coefficients of a polynomial regression of the ordered observations
 
 $$Y_{(i)} = \beta_0 + \beta_1 i + \beta_2 i^2 + \beta_3 i^3$$
+Below is a plot of the ordered observations with the fitted regression line (the unusual value $Y_{(100)}=50$ is clearly visible). This curve captures the general shape of the data and our simulation confirmed that this choice of statistic does lead to posterior samples of $\lambda|\bm{s_Y}$ that more closely resemble $\lambda|\bm{Y}$.
 
 ```{r fig.height = 4}
+result <- readRDS("mcmc_results/mcmc_bsl_poisson_regression.rds")
+
 ggplot(mapping = aes(seq_along(y), sort(y))) +
     geom_point() +
     geom_smooth(
@@ -298,18 +254,11 @@ ggplot(mapping = aes(seq_along(y), sort(y))) +
         y = "Y_(i)",
         x = "i"
     ) +
-    theme_grey(base_size = 18)
-```
-
-# Further exploration
-
-```{r}
-result <- readRDS("mcmc_results/mcmc_bsl_poisson_regression.rds")
-
-(plot_param_traceplot(result, lambda, true_lambda) +
-plot_log_prob_traceplot(result)) /
+    theme_grey(base_size = 18) +
+plot_param_traceplot(result, lambda, true_lambda) /
 plot_param_hist(result, lambda, true_lambda)
 ```
+
 
 # Ricker population model example
 
