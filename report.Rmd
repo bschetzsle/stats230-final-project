@@ -161,21 +161,12 @@ With these estimates, we can evaluate the synthetic likelihood of various propos
 knitr::include_graphics("images/sl_diagram.png")
 ```
 
-# A toy example
+# A Toy Example
 
-Consider the model:
-\begin{align*}
-Y_i | \lambda &\overset{\text{iid}}{\sim} Poisson(\lambda) \qquad i=1,...,100 \\
-\lambda &\sim Gamma(\alpha=0.001, \beta=0.001)
-\end{align*}
+Price et. al. first elaborate on the mechanism of synthetic likelihood using an elementary toy example. Consider data drawn from a Poisson distribution, $Poisson(\lambda)$, with mean $\lambda$ and a prior distribution placed on $\lambda$ of $Gamma(\alpha, \beta)$. We are interested in performing posterior inference on $p(\lambda | \bm{Y}) \propto p(\bm{Y} | \lambda) p(\lambda)$ which is proportional to the conditional likelihood of the data, $p(\bm{Y} | \lambda)$, multiplied by the prior density of the parameter, $p(\lambda)$. The authors chose values $\lambda=30$, $\alpha=\beta=0.001$, and sample size of $N=100$ which yields a posterior distribution that can adequately be approximated by the normal distribution assumed by BSL.
 
-Suppose we generate observations $Y_1, ..., Y_{100}$ using $\lambda = 30$ and want to conduct inference on $\lambda$.
+It is important to note that the true posterior can be derived analytically:
 
-We want to find $p(\lambda | \bm{Y}) \propto p(\bm{Y} | \lambda) p(\lambda)$ without evaluating $p(\bm{Y} | \lambda)$.
-
-# A toy example
-
-Note:
 \begin{align*}
 p(\lambda | \bm{Y})
 &\propto \left[ \prod_{i=1}^{100} \frac{\lambda^{Y_i}}{Y_i!} e^{-\lambda}\right] \left[ \frac{\beta^\alpha}{\Gamma(\alpha)}\lambda^{\alpha-1}e^{-\beta\lambda}\right] \\\\
@@ -183,22 +174,13 @@ p(\lambda | \bm{Y})
 &\sim Gamma(\alpha=0.001+\sum_{i=1}^{100}Y_i, \beta=100.001)
 \end{align*}
 
-So, in this toy example, the posterior distribution is known analytically.
-We will compare our MCMC results to this distribution.
+Thus, for any choice of statistic $\bm{s_Y}$ we can compare the distribution of posterior samples of $\lambda|\bm{s_Y}$ to the known, true posterior conditional on the full data, $\lambda|\bm{Y}$. The authors acknowledge that this is not always the aim of BSL. However, when $\bm{s_Y}$ is a sufficient statistic for the sample $\bm{Y}$ the two distributions are the same. Price et. al. use the mean, $\bm{s_Y}=\bar{Y}$, as the statistic which is sufficient for Poisson samples. The mean also has the added benefit that the central limit theorem guarantees that means of repeated samples are normally distributed so the central assumption behing BSL is satisfied automatically.
+
+We replicate this setup and generate 1000 posterior samples of $\lambda$. We start at $\lambda$
 
 # A toy example
 
-How should we choose a statistic? The paper uses the mean:
-
-\[s_Y = \frac{1}{100}\sum_{i=1}^{100}Y_i\]
-
-This is the sufficient statistic for the Poisson distribution.
-
-By the central limit theorem, the distribution of the mean can be adequately approximated by a normal distribution, so synthetic likelihood should perform well in this setting.
-
-# A toy example
-
-```{r}
+```{r cache=TRUE}
 true_lambda <- 30
 
 set.seed(100)
